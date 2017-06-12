@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+import numpy as np
+def lda_discriminability(X_train_std,y_train,X,n_class,n_feature):
+    print 'calculate mean_vector\n'
+    X_train_std = X
+    y_train=y
+    np.set_printoptions(precision=n_class+1)
+    mean_vecs=[]
+    for label in range(1,n_calss+1):
+        mean_vecs.append(np.mean(X_train_std[y_train==label],axis=0))
+        print 'MV %s:%s\n'%(label,mean_vecs[label-1])
+
+    print 'done'
+
+    print 'calc Within_calss scatter matrix'
+
+    d=n_feature
+    S_W=np.zeros((d,d))
+    for label,mv in zip(range(1,4),mean_vecs):
+        class_scatter = np.cov(X_train_std[y_train == label].T)
+        S_W +=class_scatter
+    print 'Scaled within-calss scatter matrix: %s x %s'%(S_W.shape[0],S_W.shape[1])
+
+    print 'Within-calss scatter matrix: %s x %s'%(S_W.shape[0],S_W.shape[1])
+
+    mean_overall = np.mean(X_train_std, axis=0)
+    d=13
+    S_B=np.zeros((d,d))
+    for i,mean_vec in enumerate(mean_vecs):
+        n=X[y==i+1,:].shape[0]
+        mean_vec = mean_vec.reshape(d,1)
+        mean_overall = mean_overall.reshape(d,1)
+        S_B += n * (mean_vec - mean_overall).dot((mean_vec-mean_overall).T)
+
+    print 'Between-class scatter matrix: %s x %s' %(S_B.shape[0],S_B.shape[1])
+
+    eigen_vals,eigen_vecs = np.linalg.eig(np.linalg.inv(S_W).dot(S_B))
+    eigen_pairs=[(np.abs(eigen_vals[i]),eigen_vecs[:,i]) for i in range(len(eigen_vals))]
+    eigen_pairs = sorted(eigen_pairs,key=lambda k:k[0],reverse = True)
+    print 'Eigenvalues in decerasing order : \n'
+    for eigen_val in eigen_pairs:
+        print eigen_val[0]
+    tot = sum(eigen_val.real)
+    discr = [(i/tot) for i in sorted(eigen_val.real,reverse = True)]
+    cum_discr = np.cumsum(discr)
+    plt.title('Variance explained ration')
+    plt.bar(range(1,n_features+1),discr,alpha=0.5,align='center',label='individual discriminability')
+    plt.step(range(1,n_features+1),cum_discr,where='mid',label='cummulative discriminability')
+    plt.ylabel('discriminability ratio')
+    plt.xlabel('Principal components')
+    plt.ylim([-0.1,1.1])
+    plt.legend(loc='best')
+    plt.grid()
+    plt.show()
